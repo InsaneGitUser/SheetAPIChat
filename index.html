@@ -1,148 +1,81 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SheetApiChat</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
+<meta charset="UTF-8">
+<title>Chat</title>
+<style>
+body { font-family: Arial; max-width: 800px; margin: 20px auto; }
+.messages { height: 300px; overflow-y: auto; border: 1px solid #ccc; }
+.message { margin: 10px; padding: 10px; background: #f0f0f0; }
+input, textarea { width: 100%; margin: 10px 0; }
+</style>
+<script>
+const API_KEY = 'AIzaSyDp-ur_OxgDkDdeCNiQM_bVc5wJ_GEU24M';
+const SPREADSHEET_ID = '17VUPsLaVzHxPQZd4NMokN2e0fgvF4NOW8DgJMd5QGNo';
+    
+function sendMessage() {
+    const name = document.getElementById('name').value.trim();
+    const message = document.getElementById('message').value.trim();
+    
+    if (!name || !message) {
+        alert('Please enter name and message');
+        return;
+    }
+
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1!A:C:append?valueInputOption=RAW&key=${API_KEY}`;
+    const data = {
+        values: [[new Date().toISOString(), name, message]]
+    };
+
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (response.ok) {
+            document.getElementById('message').value = '';
+            loadMessages();
+        } else {
+            throw new Error('Send failed');
         }
-        .chat-container {
-            border: 1px solid #ccc;
-            padding: 20px;
-            border-radius: 5px;
-        }
-        .message-list {
-            height: 300px;
-            overflow-y: auto;
-            margin: 20px 0;
-            padding: 10px;
-            background: #f9f9f9;
-            border: 1px solid #ddd;
-        }
-        .message-item {
-            margin-bottom: 10px;
-            padding: 10px;
-            background: white;
-            border-radius: 5px;
-        }
-        input, textarea {
-            width: 100%;
-            padding: 8px;
-            margin: 8px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        button {
-            background: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #45a049;
-        }
-    </style>
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to send message');
+    });
+}
+
+function loadMessages() {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1!A2:C?key=${API_KEY}`;
+    
+    fetch(url)
+    .then(response => response.json())
+    .then(data => {
+        const messages = data.values || [];
+        const messageList = document.getElementById('messageList');
+        messageList.innerHTML = messages.map(msg => `
+            <div class="message">
+                <strong>${msg[1]}</strong>
+                <span>${new Date(msg[0]).toLocaleString()}</span>
+                <p>${msg[2]}</p>
+            </div>
+        `).join('');
+        messageList.scrollTop = messageList.scrollHeight;
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script>
 </head>
 <body>
-    <div class="chat-container">
-        <h1>Simple Chat</h1>
-        <div class="message-list" id="messageList"></div>
-        
-        <div>
-            <label for="name">Name:</label>
-            <input type="text" id="name" placeholder="Enter your name">
-            
-            <label for="message">Message:</label>
-            <textarea id="message" placeholder="Type your message"></textarea>
-            
-            <button onclick="sendMessage()">Send Message</button>
-        </div>
-    </div>
+<div id="messageList" class="messages"></div>
+<input type="text" id="name" placeholder="Name">
+<textarea id="message" placeholder="Message"></textarea>
+<button onclick="sendMessage()">Send</button>
 
-    <script>
-  
-        const API_KEY = 'AIzaSyDp-ur_OxgDkDdeCNiQM_bVc5wJ_GEU24M';
-        const SPREADSHEET_ID = '17VUPsLaVzHxPQZd4NMokN2e0fgvF4NOW8DgJMd5QGNo';
-        const SHEET_NAME = 'SheetApiChat';
-        async function fetchMessages() {
-            const range = `${SHEET_NAME}!A2:D`;
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?key=${API_KEY}`;
-            
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                displayMessages(data.values || []);
-            } catch (error) {
-                console.error('Error fetching messages:', error);
-            }
-        }
-
-        async function sendMessage() {
-            const nameInput = document.getElementById('name');
-            const messageInput = document.getElementById('message');
-            
-            const name = nameInput.value.trim();
-            const message = messageInput.value.trim();
-            const timestamp = new Date().toISOString();
-            
-            if (!name || !message) {
-                alert('Please enter both name and message');
-                return;
-            }
-
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A:D:append?valueInputOption=RAW&key=${API_KEY}`;
-            
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        values: [[timestamp, name, message]]
-                    })
-                });
-
-                if (response.ok) {
-                    messageInput.value = '';
-                    fetchMessages();
-                } else {
-                    throw new Error('Failed to send message');
-                }
-            } catch (error) {
-                console.error('Error sending message:', error);
-                alert('Failed to send message. Please try again.');
-            }
-        }
-
-        function displayMessages(messages) {
-            const messageList = document.getElementById('messageList');
-            messageList.innerHTML = messages.map(msg => `
-                <div class="message-item">
-                    <div><strong>${escapeHtml(msg[1])}</strong> - ${new Date(msg[0]).toLocaleString()}</div>
-                    <div>${escapeHtml(msg[2])}</div>
-                </div>
-            `).join('');
-            messageList.scrollTop = messageList.scrollHeight;
-        
-        function escapeHtml(unsafe) {
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        fetchMessages();
-        setInterval(fetchMessages, 5000);
-    </script>
+<script>
+loadMessages();
+setInterval(loadMessages, 5000);
+</script>
 </body>
 </html>
